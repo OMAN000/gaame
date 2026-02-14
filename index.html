@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>زين عن تذاكر | Zen Games</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* الألوان بناءً على الصورة */
+            --bg: #1a1c23;
+            --surface: #242731;
+            --text: #ffffff;
+            --primary: #adff2f; /* الأخضر الفسفوري من الصورة */
+            --accent: #bf5af2;  /* البنفسجي من الصورة */
+            --border: rgba(255, 255, 255, 0.05);
+            --loader-bg: #13151a;
+        }
+
+        [data-theme="light"] {
+            --bg: #f0f2f5;
+            --surface: #ffffff;
+            --text: #1a1a1a;
+            --primary: #4facfe;
+            --accent: #7000ff;
+            --border: rgba(0, 0, 0, 0.05);
+            --loader-bg: #ffffff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cairo', sans-serif; transition: all 0.3s ease; }
+
+        body { background: var(--bg); color: var(--text); overflow-x: hidden; min-height: 100vh; }
+
+        /* شاشة البدء المحسنة */
+        #loader {
+            position: fixed;
+            inset: 0; background: var(--loader-bg);
+            z-index: 9999; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+        }
+        .portal { 
+            width: 100px; height: 100px; 
+            border: 4px solid var(--surface); 
+            border-top: 4px solid var(--primary); 
+            border-bottom: 4px solid var(--accent);
+            border-radius: 50%; animation: spin 1s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55); 
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* الهيدر */
+        header {
+            padding: 1.2rem 5%; display: flex; justify-content: space-between; align-items: center;
+            background: var(--surface); backdrop-filter: blur(15px);
+            position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid var(--border);
+        }
+
+        .logo { font-family: 'Orbitron', sans-serif; font-size: 1.8rem; font-weight: 900; color: var(--primary); letter-spacing: 2px; }
+        .logo span { color: var(--text); font-size: 1.4rem; margin-right: 10px; }
+
+        .header-btns { display: flex; gap: 10px; }
+        .theme-toggle, .logout-dev {
+            cursor: pointer; background: var(--primary); color: #000;
+            padding: 8px 18px; border-radius: 12px; font-weight: bold; font-size: 0.85rem; border: none;
+        }
+        .logout-dev { background: var(--accent); color: white; display: none; }
+
+        /* التصنيفات */
+        .nav-cats { display: flex; gap: 12px; padding: 25px 5%; overflow-x: auto; scrollbar-width: none; justify-content: center; }
+        .cat { 
+            padding: 10px 24px; background: var(--surface); border-radius: 12px; 
+            cursor: pointer; border: 1px solid var(--border); white-space: nowrap; font-size: 0.95rem; font-weight: 600;
+        }
+        .cat.active { background: var(--primary); color: #000; border-color: var(--primary); box-shadow: 0 0 15px rgba(173, 255, 47, 0.3); }
+
+        /* لوحة المطور */
+        #adminPanel {
+            display: none; background: var(--surface); margin: 0 5% 20px 5%; padding: 25px;
+            border-radius: 20px; border: 2px dashed var(--primary); animation: slideDown 0.4s ease;
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        input, select { background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text); padding: 12px; border-radius: 10px; outline: none; }
+        input:focus { border-color: var(--primary); }
+
+        /* شبكة الألعاب مثل الصورة */
+        .games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px; padding: 20px 5%; }
+        .game-card { 
+            background: var(--surface); border-radius: 24px; overflow: hidden; 
+            border: 2px solid var(--border); position: relative;
+        }
+        /* تأثير الحدود الملونة عند التمرير مثل الصورة */
+        .game-card:hover { 
+            transform: translateY(-10px); 
+            border-color: var(--primary); 
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+        }
+        .game-card:nth-child(even):hover { border-color: var(--accent); }
+
+        .game-img { width: 100%; height: 210px; object-fit: cover; border-bottom: 1px solid var(--border); }
+        .game-info { padding: 20px; }
+        
+        .play-btn { 
+            display: block; width: 100%; text-align: center; padding: 14px; 
+            background: var(--primary); color: #000; text-decoration: none; 
+            border-radius: 15px; font-weight: 900; margin-top: 10px; font-size: 1rem;
+        }
+
+        /* أدوات التعديل */
+        .edit-tools { 
+            position: absolute; top: 15px; left: 15px; display: none; 
+            background: rgba(0,0,0,0.8); padding: 8px; border-radius: 12px; gap: 8px; z-index: 10;
+        }
+        .tool-btn { border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.75rem; font-weight: bold; color: #fff; }
+
+        .dev-trigger { position: fixed; bottom: 15px; right: 15px; font-size: 10px; opacity: 0.2; cursor: pointer; color: var(--text); }
+
+        @media (max-width: 768px) {
+            .nav-cats { justify-content: flex-start; }
+            .games-grid { grid-template-columns: 1fr; }
+            .logo { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <div class="portal"></div>
+    <p style="margin-top: 20px; font-weight: 700; color: var(--primary); letter-spacing: 1px;">نقوم بإعداد ألعابك المفضلة...</p>
+</div>
+
+<header>
+    <div class="logo">ORBITRON<span>زين عن تذاكر</span></div>
+    <div class="header-btns">
+        <button class="logout-dev" id="logoutDevBtn" onclick="logoutDev()">خروج المطور</button>
+        <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">المود المسائي 🌙</button>
+    </div>
+</header>
+
+<main>
+    <div class="nav-cats" id="catList">
+        <div class="cat active" onclick="filter('الكل')">الكل</div>
+        <div class="cat" onclick="filter('أكشن')">أكشن</div>
+        <div class="cat" onclick="filter('مغامرة')">مغامرة</div>
+        <div class="cat" onclick="filter('ذكاء')">ذكاء</div>
+        <div class="cat" onclick="filter('رياضة')">رياضة</div>
+    </div>
+
+    <div id="adminPanel">
+        <h3 style="margin-bottom: 20px; color: var(--primary);">🛠 لوحة تحكم السحابة</h3>
+        <div class="admin-grid">
+            <input type="text" id="inTitle" placeholder="اسم اللعبة الجديد">
+            <input type="text" id="inFile" placeholder="ملف اللعبة (index.html)">
+            <input type="text" id="inImg" placeholder="رابط صورة الغلاف">
+            <select id="inCat">
+                <option value="أكشن">أكشن</option>
+                <option value="مغامرة">مغامرة</option>
+                <option value="ذكاء">ذكاء</option>
+                <option value="رياضة">رياضة</option>
+            </select>
+            <button onclick="uploadGame()" style="background:var(--primary); color:#000; border:none; border-radius:10px; cursor:pointer; font-weight:900;">إضافة للجميع</button>
+        </div>
+    </div>
+
+    <div class="games-grid" id="mainGrid"></div>
+</main>
+
+<div class="dev-trigger" onclick="handleDev()">SYSTEM_VER_7.0</div>
+
+<script>
+    const API = "https://script.google.com/macros/s/AKfycbwNc0pQNDgSb0IS0ItTLGtkSp8e3LkVSyP2e8BLo7Usx90auUXuOngUxxpazLySxMJB/exec";
+    let allGames = [];
+    let devClicks = 0;
+    let isDev = false;
+
+    function toggleTheme() {
+        const body = document.body;
+        const btn = document.getElementById('themeBtn');
+        if(body.getAttribute('data-theme') === 'light') {
+            body.removeAttribute('data-theme');
+            btn.innerText = "المود المسائي 🌙";
+        } else {
+            body.setAttribute('data-theme', 'light');
+            btn.innerText = "المود الصباحي ☀️";
+        }
+    }
+
+    async function load() {
+        try {
+            const r = await fetch(API);
+            allGames = await r.json();
+            render(allGames);
+            document.getElementById('loader').style.opacity = '0';
+            setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+        } catch(e) { document.querySelector('#loader p').innerText = "فشل في الاتصال بالسحابة"; }
+    }
+
+    function render(data) {
+        const grid = document.getElementById('mainGrid');
+        grid.innerHTML = data.map((g, i) => `
+            <div class="game-card">
+                <div class="edit-tools" style="display: ${isDev ? 'flex' : 'none'}">
+                    <button class="tool-btn" style="background:#f39c12" onclick="alert('عدل مباشرة من Google Sheets')">تعديل</button>
+                    <button class="tool-btn" style="background:#e74c3c" onclick="alert('احذف الصف من Google Sheets')">حذف</button>
+                </div>
+                <img src="${g.img}" class="game-img" onerror="this.src='https://via.placeholder.com/400x250/242731/adff2f?text=Zen+Games'">
+                <div class="game-info">
+                    <small style="color:var(--primary); font-weight:900; text-transform:uppercase; letter-spacing:1px;">${g.cat}</small>
+                    <h3 style="margin:8px 0 18px 0; font-size:1.3rem;">${g.title}</h3>
+                    <a href="${g.file}" class="play-btn">Play Now</a>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function handleDev() {
+        devClicks++;
+        if(devClicks >= 3) {
+            const u = prompt("اسم المستخدم:");
+            const p = prompt("كلمة المرور:");
+            const res = await fetch(API, {method:"POST", body: JSON.stringify({action:"login", user:u, pass:p})});
+            if(await res.text() === "success") {
+                activateDevMode();
+            } else {
+                alert("بيانات خاطئة!");
+                devClicks = 0;
+            }
+        }
+    }
+
+    function activateDevMode() {
+        isDev = true;
+        document.getElementById('adminPanel').style.display = 'block';
+        document.getElementById('logoutDevBtn').style.display = 'block';
+        render(allGames);
+        alert("أهلاً بك في نظام الإدارة");
+    }
+
+    function logoutDev() {
+        isDev = false;
+        document.getElementById('adminPanel').style.display = 'none';
+        document.getElementById('logoutDevBtn').style.display = 'none';
+        devClicks = 0;
+        render(allGames);
+    }
+
+    async function uploadGame() {
+        const title = document.getElementById('inTitle').value;
+        const file = document.getElementById('inFile').value;
+        const img = document.getElementById('inImg').value;
+        const cat = document.getElementById('inCat').value;
+        if(!title || !file) return alert("أكمل البيانات أولاً");
+        
+        document.getElementById('loader').style.display = 'flex';
+        document.getElementById('loader').style.opacity = '1';
+        await fetch(API, {method:"POST", body: JSON.stringify({action:"addGame", title, file, img, cat})});
+        location.reload();
+    }
+
+    function filter(c) {
+        document.querySelectorAll('.cat').forEach(el => el.classList.remove('active'));
+        event.target.classList.add('active');
+        render(c === 'الكل' ? allGames : allGames.filter(g => g.cat === c));
+    }
+
+    load();
+</script>
+</body>
+</html>
