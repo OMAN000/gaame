@@ -111,6 +111,323 @@
     </div>
 
     <textarea id="codeStorage">
+        <html lang="ar" dir="rtl"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <title>PvZ Pro - Final Fixed</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        canvas { display: block; }
+        #ui {
+            position: fixed; top: 15px; left: 15px; color: #fff;
+            background: rgba(0,0,0,0.8); padding: 12px 25px;
+            border-radius: 30px; font-size: 22px; z-index: 10;
+            border: 2px solid #4CAF50; display: flex; gap: 20px;
+        }
+        #plantBar {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(62, 39, 35, 0.95); padding: 12px; border-radius: 15px;
+            display: flex; gap: 10px; z-index: 10; border: 3px solid #261b15;
+        }
+        .card {
+            width: 85px; height: 110px; background: #795548; border: 2px solid #3e2723;
+            border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s;
+            display: flex; flex-direction: column; justify-content: space-around;
+        }
+        .card.selected { border-color: #ffeb3b; box-shadow: 0 0 15px #ffeb3b; background: #5d4037; }
+        .card img { width: 55px; height: 55px; margin: 0 auto; object-fit: contain; }
+        .card .cost { color: #ffeb3b; font-weight: bold; font-size: 14px; background: rgba(0,0,0,0.3); }
+        .overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; z-index: 100; color: white; text-align: center;
+        }
+        .btn-start {
+            padding: 15px 50px; font-size: 28px; background: #4CAF50;
+            color: white; border: none; border-radius: 50px; cursor: pointer;
+            box-shadow: 0 5px 0 #2e7d32; transition: 0.1s;
+        }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <span>☀ <span id="sunCount">150</span></span>
+    <span>Score: <span id="scoreCount">0</span></span>
+    <span style="color: #4CAF50;">Level: <span id="lvlCount">1</span></span>
+</div>
+
+<div id="startScreen" class="overlay">
+    <h1 style="font-size: 70px; color: #4CAF50; margin-bottom: 0;">PLANTS VS ZOMBIES</h1>
+    <p style="font-size: 20px; color: #ddd; margin-bottom: 30px;">إصلاح الشمس والقنبلة | شبكة 7×10</p>
+    <button class="btn-start" onclick="startGame()">إبـدأ الـلـعـب</button>
+</div>
+
+<div id="loseScreen" class="overlay" style="display: none;">
+    <h1 style="font-size: 60px; color: #f44336;">💀 دخلوا البيت! 💀</h1>
+    <p id="finalScore" style="font-size: 24px;"></p>
+    <button class="btn-start" style="background: #f44336;" onclick="location.reload()">إعادة المحاولة</button>
+</div>
+
+<div id="plantBar"></div>
+<canvas id="c" width="980" height="1743"></canvas>
+
+<script>
+const canvas = document.getElementById("c"); 
+const ctx = canvas.getContext("2d");
+const gridX = 120, gridY = 60, cellW = 130, cellH = 100, rows = 7, cols = 10;
+
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resize(); window.onresize = resize;
+
+const assets = {
+    bg: "assets/backgrounds/background1.png",
+    sun: "assets/sun.png",
+    bullet: "assets/bullets/bullet.png",
+    sunflower: "assets/plants/sunflower.png",
+    shooter: "assets/plants/shooter.png",
+    shooter2: "assets/plants/shooter2.png",
+    bomb: "assets/plants/bomb.png",
+    shovel: "assets/plants/shovel.png",
+    zombie: "assets/zombies/zombie.png",
+    shield_zombie: "assets/zombies/shield_zombie.png",
+    fast_zombie: "assets/zombies/fast_zombie.png",
+    boss: "assets/zombies/boss.png"
+};
+
+const imgs = {};
+for (let key in assets) { imgs[key] = new Image(); imgs[key].src = assets[key]; }
+
+let game = "menu", sun = 150, score = 0, wave = 0, level = 1;
+let plants = [], zombies = [], bullets = [], suns = [];
+let selected = null;
+
+const plantTypes = [
+    { id: "sunflower", cost: 50,  rate: 400, type: "producer" },
+    { id: "shooter",   cost: 100, rate: 90,  type: "attacker", dmg: 20 },
+    { id: "shooter2",  cost: 200, rate: 45,  type: "attacker", dmg: 15 },
+    { id: "bomb",      cost: 150, rate: 60,  type: "bomb",     dmg: 500 },
+    { id: "shovel",    cost: 0,   type: "tool" } 
+];
+
+function startGame() {
+    document.getElementById("startScreen").style.display = "none";
+    game = "play";
+    createUI();
+    loop();
+}
+
+function createUI() {
+    const bar = document.getElementById("plantBar");
+    plantTypes.forEach(p => {
+        let card = document.createElement("div");
+        card.className = "card";
+        let label = p.id === 'shovel' ? 'مجراف' : (p.id === 'bomb' ? 'قنبلة' : p.id);
+        card.innerHTML = `<img src="${assets[p.id]}" onerror="this.style.backgroundColor='#555'"><span>${label}</span><div class="cost">${p.cost > 0 ? '☀ '+p.cost : ''}</div>`;
+        card.onclick = (e) => {
+            e.stopPropagation();
+            selected = p;
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+        };
+        bar.appendChild(card);
+    });
+}
+
+class Zombie {
+    constructor(row, type = "normal") {
+        this.x = canvas.width; this.y = gridY + row * cellH;
+        this.row = row; this.type = type;
+        if (type === "fast") {
+            this.hp = 70 + (level * 20); this.speed = 1.1 + (level * 0.05); this.img = imgs.fast_zombie;
+        } else if (type === "shield") {
+            this.hp = 250 + (level * 50); this.speed = 0.4 + (level * 0.02); this.img = imgs.shield_zombie;
+        } else if (type === "boss") {
+            this.hp = 800 + (level * 100); this.speed = 0.3 + (level * 0.02); this.img = imgs.boss;
+        } else {
+            this.hp = 100 + (level * 15); this.speed = 0.6 + (level * 0.03); this.img = imgs.zombie;
+        }
+        this.maxHp = this.hp;
+    }
+    update() {
+        let target = plants.find(p => p.row === this.row && this.x < p.x + 50 && this.x > p.x - 20);
+        if (target) {
+            target.hp -= (0.5 + (level * 0.05));
+            if (target.hp <= 0) plants.splice(plants.indexOf(target), 1);
+        } else this.x -= this.speed;
+    }
+    draw() {
+        try { ctx.drawImage(this.img, this.x, this.y, 80, 100); } catch(e) {}
+        ctx.fillStyle = "red"; ctx.fillRect(this.x + 10, this.y, 60, 4);
+        ctx.fillStyle = "lime"; ctx.fillRect(this.x + 10, this.y, Math.max(0, (this.hp/this.maxHp)*60), 4);
+    }
+}
+
+class Sun {
+    constructor(x, y, fromPlant = false) {
+        this.x = fromPlant ? x : Math.random() * (canvas.width - 300) + 150;
+        this.y = fromPlant ? y : -50;
+        this.targetY = fromPlant ? y + 40 : Math.random() * 400 + 100;
+        this.timer = 0;
+    }
+    update() {
+        if (this.y < this.targetY) this.y += 2;
+        this.timer++;
+    }
+    draw() {
+        try { 
+            ctx.drawImage(imgs.sun, this.x, this.y, 60, 60); 
+        } catch(e) {
+            ctx.fillStyle = "yellow";
+            ctx.beginPath(); ctx.arc(this.x+30, this.y+30, 25, 0, Math.PI*2); ctx.fill();
+        }
+    }
+}
+
+class Plant {
+    constructor(col, row, type) {
+        this.x = gridX + col * cellW; this.y = gridY + row * cellH;
+        this.row = row; this.id = type.id; this.hp = 100;
+        this.timer = 0; this.rate = type.rate; this.dmg = type.dmg;
+        this.type = type.type;
+    }
+    update() {
+        this.timer++;
+        if (this.type === "attacker") {
+            let hasEnemy = zombies.some(z => z.row === this.row && z.x > this.x);
+            if (this.timer >= this.rate && hasEnemy) {
+                bullets.push({ x: this.x + 80, y: this.y + 40, row: this.row, dmg: this.dmg });
+                this.timer = 0;
+            }
+        } else if (this.type === "producer" && this.timer >= this.rate) {
+            suns.push(new Sun(this.x + 30, this.y + 20, true));
+            this.timer = 0;
+        } else if (this.type === "bomb" && this.timer >= 60) {
+            // منطق القنبلة المصلح
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                let z = zombies[i];
+                let dist = Math.hypot(z.x - this.x, z.y - this.y);
+                if (dist < 180) {
+                    z.hp -= this.dmg;
+                    if (z.hp <= 0) {
+                        zombies.splice(i, 1);
+                        score += 100;
+                    }
+                }
+            }
+            plants.splice(plants.indexOf(this), 1);
+        }
+    }
+    draw() { 
+        try { 
+            if (this.type === "bomb" && this.timer > 50) {
+                ctx.fillStyle = "rgba(255,100,0,0.5)";
+                ctx.beginPath(); ctx.arc(this.x+60, this.y+50, 100, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.drawImage(imgs[this.id], this.x+15, this.y+10, 80, 80); 
+        } catch(e){} 
+    }
+}
+
+function loop() {
+    if (game !== "play") return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    try { ctx.drawImage(imgs.bg, 0, 0, canvas.width, canvas.height); } catch(e){}
+
+    // رسم الشبكة
+    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    for(let r=0; r<rows; r++) {
+        for(let c=0; c<cols; c++) ctx.strokeRect(gridX + c * cellW, gridY + r * cellH, cellW, cellH);
+    }
+
+    // شمس السماء
+    if (Math.random() < 0.006) suns.push(new Sun(null, null, false));
+
+    // الموجات
+    if (zombies.length === 0) {
+        wave++;
+        if (wave % 3 === 0) level++; 
+        let count = wave + level;
+        for(let i=0; i < count; i++) {
+            setTimeout(() => {
+                if (game !== "play") return;
+                let type = "normal";
+                let r = Math.random();
+                if (level >= 2 && r > 0.8) type = "fast";
+                if (level >= 3 && r > 0.85) type = "shield";
+                if (wave % 5 === 0 && i === 0) type = "boss";
+                zombies.push(new Zombie(Math.floor(Math.random()*rows), type));
+            }, i * 2000);
+        }
+    }
+
+    // تحديث العناصر
+    bullets.forEach((b, i) => {
+        b.x += 10;
+        try { ctx.drawImage(imgs.bullet, b.x, b.y, 22, 22); } catch(e){}
+        zombies.forEach((z, j) => {
+            if (b.row === z.row && b.x > z.x && b.x < z.x + 50) {
+                z.hp -= b.dmg; bullets.splice(i, 1);
+                if (z.hp <= 0) { zombies.splice(j, 1); score += 100; }
+            }
+        });
+    });
+
+    suns.forEach((s, i) => { s.update(); s.draw(); if(s.timer > 600) suns.splice(i,1); });
+    plants.forEach(p => { p.update(); p.draw(); });
+    zombies.forEach(z => { 
+        z.update(); z.draw(); 
+        if (z.x < gridX - 50) {
+            game = "lose";
+            document.getElementById("loseScreen").style.display = "flex";
+            document.getElementById("finalScore").textContent = "نتيجتك: " + score;
+        }
+    });
+
+    document.getElementById("sunCount").textContent = sun;
+    document.getElementById("scoreCount").textContent = score;
+    document.getElementById("lvlCount").textContent = level;
+    requestAnimationFrame(loop);
+}
+
+canvas.onclick = e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    // جمع الشمس (تحسين منطقة النقر)
+    for (let i = suns.length - 1; i >= 0; i--) {
+        let s = suns[i];
+        if (Math.hypot(mx - (s.x+30), my - (s.y+30)) < 50) {
+            sun += 25;
+            suns.splice(i, 1);
+            return; // العودة حتى لا تزرع نباتاً عند جمع الشمس
+        }
+    }
+
+    if (!selected) return;
+    let col = Math.floor((mx - gridX) / cellW);
+    let row = Math.floor((my - gridY) / cellH);
+
+    if (col >= 0 && col < cols && row >= 0 && row < rows) {
+        let idx = plants.findIndex(p => p.x === (gridX + col * cellW) && p.y === (gridY + row * cellH));
+        if (selected.id === "shovel") { 
+            if (idx !== -1) { plants.splice(idx, 1); resetSelect(); } 
+        } 
+        else if (sun >= selected.cost && idx === -1) { 
+            plants.push(new Plant(col, row, selected)); 
+            sun -= selected.cost; 
+            resetSelect(); 
+        }
+    }
+};
+
+function resetSelect() { 
+    selected = null; 
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('selected')); 
+}
+</script>
+
+</body></html>
         </textarea>
 
     <script>
