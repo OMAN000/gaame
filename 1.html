@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مشغل ألعاب زين | نظام الإطارات</title>
+    <style>
+        :root { 
+            --primary: #adff2f; 
+            --accent: #bf5af2; 
+            --bg: #0a0a0c;
+        }
+        
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: var(--bg); overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        /* شريط التحكم العلوي */
+        .header-controls {
+            height: 60px; background: #111; 
+            display: flex; justify-content: space-between;
+            align-items: center; padding: 0 20px;
+            border-bottom: 2px solid #222;
+            z-index: 10;
+        }
+
+        .btn {
+            background: #1a1a1a; border: 2px solid var(--primary);
+            color: var(--primary); padding: 8px 20px; border-radius: 12px;
+            cursor: pointer; font-weight: bold; transition: 0.3s;
+            text-transform: uppercase; font-size: 0.8rem;
+        }
+        .btn:hover { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary); }
+
+        /* حاوية الإطار الخارجي */
+        .game-viewport {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px; /* المسافة بين الإطار وحواف المتصفح */
+            position: relative;
+        }
+
+        /* الإطار النيون الملون */
+        .neon-frame {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 1200px; /* أقصى عرض للإطار للحفاظ على الدقة */
+            max-height: 85vh;
+            background: #000;
+            border-radius: 25px;
+            padding: 10px; /* سمك الإطار */
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            /* تأثير التوهج المتحرك */
+            background: linear-gradient(45deg, var(--primary), var(--accent), var(--primary));
+            background-size: 400% 400%;
+            animation: gradient-border 8s ease infinite;
+        }
+
+        @keyframes gradient-border {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* الشاشة الداخلية (داخل الإطار) */
+        .inner-screen {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #gameFrame { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+            display: block;
+        }
+
+        #codeStorage { display: none; }
+
+        @media (max-width: 600px) {
+            .game-viewport { padding: 10px; }
+            .neon-frame { border-radius: 15px; padding: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-controls">
+        <button class="btn" onclick="window.location.href='index.html'">↩️ العودة</button>
+        <div style="color: #fff; font-family: monospace; font-size: 1rem; font-weight: bold;">
+            ZEN <span style="color:var(--primary)">GAME</span> BOX
+        </div>
+        <button class="btn" style="border-color: var(--accent); color: var(--accent);" onclick="toggleFS()">📺 ملء الشاشة</button>
+    </div>
+
+    <div class="game-viewport">
+        <div class="neon-frame" id="mainFrame">
+            <div class="inner-screen">
+                <iframe id="gameFrame" allow="autoplay; fullscreen; pointer-lock" scrolling="no"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <textarea id="codeStorage">
+        </textarea>
+
+    <script>
+        function loadGame() {
+            const frame = document.getElementById('gameFrame');
+            const code = document.getElementById('codeStorage').value;
+            const frameDoc = frame.contentWindow.document;
+            frameDoc.open();
+            frameDoc.write(`
+                <style>
+                    body, html { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; background: #000; }
+                    canvas { width: 100% !important; height: 100% !important; object-fit: contain; }
+                </style>
+                ${code}
+            `);
+            frameDoc.close();
+        }
+
+        function toggleFS() {
+            const container = document.getElementById("mainFrame");
+            if (!document.fullscreenElement) {
+                container.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        window.onload = loadGame;
+    </script>
+</body>
+</html>
