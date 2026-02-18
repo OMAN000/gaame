@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مشغل ألعاب زين | نظام الإطارات</title>
+    <style>
+        :root { 
+            --primary: #adff2f; 
+            --accent: #bf5af2; 
+            --bg: #0a0a0c;
+        }
+        
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: var(--bg); overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        /* شريط التحكم العلوي */
+        .header-controls {
+            height: 60px; background: #111; 
+            display: flex; justify-content: space-between;
+            align-items: center; padding: 0 20px;
+            border-bottom: 2px solid #222;
+            z-index: 10;
+        }
+
+        .btn {
+            background: #1a1a1a; border: 2px solid var(--primary);
+            color: var(--primary); padding: 8px 20px; border-radius: 12px;
+            cursor: pointer; font-weight: bold; transition: 0.3s;
+            text-transform: uppercase; font-size: 0.8rem;
+        }
+        .btn:hover { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary); }
+
+        /* حاوية الإطار الخارجي */
+        .game-viewport {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px; /* المسافة بين الإطار وحواف المتصفح */
+            position: relative;
+        }
+
+        /* الإطار النيون الملون */
+        .neon-frame {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 1200px; /* أقصى عرض للإطار للحفاظ على الدقة */
+            max-height: 85vh;
+            background: #000;
+            border-radius: 25px;
+            padding: 10px; /* سمك الإطار */
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            /* تأثير التوهج المتحرك */
+            background: linear-gradient(45deg, var(--primary), var(--accent), var(--primary));
+            background-size: 400% 400%;
+            animation: gradient-border 8s ease infinite;
+        }
+
+        @keyframes gradient-border {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* الشاشة الداخلية (داخل الإطار) */
+        .inner-screen {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #gameFrame { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+            display: block;
+        }
+
+        #codeStorage { display: none; }
+
+        @media (max-width: 600px) {
+            .game-viewport { padding: 10px; }
+            .neon-frame { border-radius: 15px; padding: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-controls">
+        <button class="btn" onclick="window.location.href='index.html'">↩️ العودة</button>
+        <div style="color: #fff; font-family: monospace; font-size: 1rem; font-weight: bold;">
+            ZEN <span style="color:var(--primary)">GAME</span> BOX
+        </div>
+        <button class="btn" style="border-color: var(--accent); color: var(--accent);" onclick="toggleFS()">📺 ملء الشاشة</button>
+    </div>
+
+    <div class="game-viewport">
+        <div class="neon-frame" id="mainFrame">
+            <div class="inner-screen">
+                <iframe id="gameFrame" allow="autoplay; fullscreen; pointer-lock" scrolling="no"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <textarea id="codeStorage">
+      <!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>كانسة الألغام الكلاسيكية</title>
+      <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💣</text></svg>">
+    <style>
+        :root {
+            /* حجم ثابت للمربع يضمن التوافق مع أغلب الهواتف */
+            --size: clamp(30px, 9vw, 38px); 
+        }
+
+        body {
+            background-color: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: sans-serif;
+            touch-action: manipulation;
+        }
+
+        /* حاوية اللعبة الرمادية الكلاسيكية */
+        .game-container {
+            background-color: #bdc3c7;
+            padding: 10px;
+            border: 4px solid;
+            border-color: #ecf0f1 #7f8c8d #7f8c8d #ecf0f1;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* الجزء العلوي (العدادات) */
+        .top-panel {
+            background-color: #bdc3c7;
+            border: 3px solid;
+            border-color: #7f8c8d #ecf0f1 #ecf0f1 #7f8c8d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 15px;
+            margin-bottom: 10px;
+        }
+
+        .counter {
+            background-color: black;
+            color: #e74c3c;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border: 2px solid #7f8c8d;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        #reset-btn {
+            width: 40px;
+            height: 40px;
+            font-size: 24px;
+            background-color: #bdc3c7;
+            border: 3px solid;
+            border-color: #ecf0f1 #7f8c8d #7f8c8d #ecf0f1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #reset-btn:active {
+            border-color: #7f8c8d #ecf0f1 #ecf0f1 #7f8c8d;
+        }
+
+        /* شبكة الألغام */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10, var(--size));
+            grid-template-rows: repeat(10, var(--size));
+            gap: 0; /* كلاسيك بدون فواصل */
+            border: 3px solid;
+            border-color: #7f8c8d #ecf0f1 #ecf0f1 #7f8c8d;
+        }
+
+        .cell {
+            width: var(--size);
+            height: var(--size);
+            box-sizing: border-box;
+            border: 3px solid;
+            border-color: #ecf0f1 #7f8c8d #7f8c8d #ecf0f1;
+            background-color: #bdc3c7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: calc(var(--size) * 0.55);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* شكل الخلية عند الفتح */
+        .cell.checked {
+            background-color: #bdc3c7;
+            border: 1px solid #7f8c8d;
+        }
+
+        /* ألوان الأرقام الكلاسيكية */
+        .one { color: blue; }
+        .two { color: green; }
+        .three { color: red; }
+        .four { color: darkblue; }
+
+        .bomb { background-color: #e74c3c !important; }
+
+        /* أزرار التحكم للهاتف */
+        .mobile-controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .mode-btn {
+            padding: 12px 25px;
+            font-weight: bold;
+            background-color: #bdc3c7;
+            border: 3px solid;
+            border-color: #ecf0f1 #7f8c8d #7f8c8d #ecf0f1;
+            cursor: pointer;
+        }
+
+        .mode-btn.active {
+            background-color: #dcdde1;
+            border-color: #7f8c8d #ecf0f1 #ecf0f1 #7f8c8d;
+            color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="top-panel">
+            <div id="mines-left" class="counter">15</div>
+            <button id="reset-btn" onclick="location.reload()">🙂</button>
+            <div id="timer" class="counter">000</div>
+        </div>
+
+        <div id="grid" class="grid"></div>
+    </div>
+
+    <div class="mobile-controls">
+        <button id="btn-dig" class="mode-btn active" onclick="setMode('dig')">⛏️ حفر</button>
+        <button id="btn-flag" class="mode-btn" onclick="setMode('flag')">🚩 علم</button>
+    </div>
+
+    <script>
+        const width = 10;
+        const bombAmount = 15;
+        let flags = 0;
+        let squares = [];
+        let isGameOver = false;
+        let currentMode = 'dig';
+        let timer = 0;
+        let timerId;
+
+        function createBoard() {
+            const grid = document.getElementById('grid');
+            const minesArray = Array(bombAmount).fill('bomb');
+            const emptyArray = Array(width * width - bombAmount).fill('valid');
+            const gameArray = emptyArray.concat(minesArray).sort(() => Math.random() - 0.5);
+
+            for (let i = 0; i < width * width; i++) {
+                const square = document.createElement('div');
+                square.setAttribute('id', i);
+                square.classList.add('cell');
+                square.dataset.type = gameArray[i];
+                
+                // أحداث النقر
+                square.addEventListener('click', () => {
+                    if (!timerId) startTimer();
+                    handleAction(square);
+                });
+                
+                grid.appendChild(square);
+                squares.push(square);
+            }
+
+            // إضافة الأرقام
+            for (let i = 0; i < squares.length; i++) {
+                let total = 0;
+                const isLeftEdge = (i % width === 0);
+                const isRightEdge = (i % width === width - 1);
+
+                if (squares[i].dataset.type === 'valid') {
+                    if (i > 0 && !isLeftEdge && squares[i-1].dataset.type === 'bomb') total++;
+                    if (i > 9 && !isRightEdge && squares[i+1-width].dataset.type === 'bomb') total++;
+                    if (i > 10 && squares[i-width].dataset.type === 'bomb') total++;
+                    if (i > 11 && !isLeftEdge && squares[i-1-width].dataset.type === 'bomb') total++;
+                    if (i < 99 && !isRightEdge && squares[i+1].dataset.type === 'bomb') total++;
+                    if (i < 90 && !isLeftEdge && squares[i-1+width].dataset.type === 'bomb') total++;
+                    if (i < 89 && !isRightEdge && squares[i+1+width].dataset.type === 'bomb') total++;
+                    if (i < 90 && squares[i+width].dataset.type === 'bomb') total++;
+                    squares[i].setAttribute('data', total);
+                }
+            }
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn-dig').classList.toggle('active', mode === 'dig');
+            document.getElementById('btn-flag').classList.toggle('active', mode === 'flag');
+        }
+
+        function handleAction(square) {
+            if (isGameOver) return;
+            if (currentMode === 'flag') {
+                addFlag(square);
+            } else {
+                click(square);
+            }
+        }
+
+        function addFlag(square) {
+            if (isGameOver || square.classList.contains('checked')) return;
+            if (!square.classList.contains('flag')) {
+                square.classList.add('flag');
+                square.innerHTML = '🚩';
+                flags++;
+            } else {
+                square.classList.remove('flag');
+                square.innerHTML = '';
+                flags--;
+            }
+            document.getElementById('mines-left').innerHTML = bombAmount - flags;
+        }
+
+        function click(square) {
+            if (isGameOver || square.classList.contains('checked') || square.classList.contains('flag')) return;
+
+            if (square.dataset.type === 'bomb') {
+                gameOver();
+            } else {
+                let total = square.getAttribute('data');
+                square.classList.add('checked');
+                if (total != 0) {
+                    if (total == 1) square.classList.add('one');
+                    if (total == 2) square.classList.add('two');
+                    if (total == 3) square.classList.add('three');
+                    square.innerHTML = total;
+                    return;
+                }
+                checkSquare(square.id);
+            }
+            checkWin();
+        }
+
+        function checkSquare(currentId) {
+            const isLeftEdge = (currentId % width === 0);
+            const isRightEdge = (currentId % width === width - 1);
+
+            setTimeout(() => {
+                const neighbors = [-1, 1, -10, 10, -11, -9, 9, 11];
+                neighbors.forEach(offset => {
+                    const nextId = parseInt(currentId) + offset;
+                    if (nextId >= 0 && nextId < 100) {
+                        // تجنب القفز عبر الحواف
+                        if (isLeftEdge && (offset === -1 || offset === -11 || offset === 9)) return;
+                        if (isRightEdge && (offset === 1 || offset === 11 || offset === -9)) return;
+                        click(squares[nextId]);
+                    }
+                });
+            }, 10);
+        }
+
+        function startTimer() {
+            timerId = setInterval(() => {
+                timer++;
+                document.getElementById('timer').innerHTML = timer.toString().padStart(3, '0');
+            }, 1000);
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            clearInterval(timerId);
+            document.getElementById('reset-btn').innerHTML = '😵';
+            squares.forEach(s => {
+                if (s.dataset.type === 'bomb') {
+                    s.innerHTML = '💣';
+                    s.classList.add('checked');
+                }
+            });
+            alert('انتهت اللعبة! 💥');
+        }
+
+        function checkWin() {
+            const checkedCount = squares.filter(s => s.classList.contains('checked')).length;
+            if (checkedCount === (width * width - bombAmount)) {
+                isGameOver = true;
+                clearInterval(timerId);
+                document.getElementById('reset-btn').innerHTML = '😎';
+                alert('مبروك! فزت 🎉');
+            }
+        }
+
+        createBoard();
+    </script>
+</body>
+</html>
+        </textarea>
+
+    <script>
+        function loadGame() {
+            const frame = document.getElementById('gameFrame');
+            const code = document.getElementById('codeStorage').value;
+            const frameDoc = frame.contentWindow.document;
+            frameDoc.open();
+            frameDoc.write(`
+                <style>
+                    body, html { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; background: #000; }
+                    canvas { width: 100% !important; height: 100% !important; object-fit: contain; }
+                </style>
+                ${code}
+            `);
+            frameDoc.close();
+        }
+
+        function toggleFS() {
+            const container = document.getElementById("mainFrame");
+            if (!document.fullscreenElement) {
+                container.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        window.onload = loadGame;
+    </script>
+</body>
+</html>
